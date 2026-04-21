@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FilmyNest • Interactive Desi Cinema</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;900&family=Space+Grotesk:wght@500;600;700&display=swap');
+       
+        .movie-card {
+            transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        .movie-card:hover {
+            transform: scale(1.1) translateY(-15px);
+            box-shadow: 0 40px 70px -20px rgba(249, 115, 22, 0.6);
+        }
+        .modal {
+            animation: modalEnter 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+        @keyframes modalEnter {
+            from { opacity: 0; transform: scale(0.85) translateY(50px); }
+            to { opacity: 1; transform: scale(1) translateY(0); }
+        }
+        .toast {
+            animation: toastPop 0.4s ease forwards;
+        }
+        @keyframes toastPop {
+            from { transform: translateY(30px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+        .heart-liked { color: #f97316; animation: heartBeat 0.3s; }
+        @keyframes heartBeat {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+        }
+    </style>
+</head>
+<body class="bg-zinc-950 text-white">
+
+    <!-- NAVBAR -->
+    <nav class="bg-black/95 backdrop-blur-xl fixed w-full z-50 border-b border-orange-500/30">
+        <div class="max-w-screen-2xl mx-auto px-8 py-5 flex justify-between items-center">
+            <div class="flex items-center gap-4">
+                <div class="w-11 h-11 bg-gradient-to-br from-orange-500 to-red-600 rounded-3xl flex items-center justify-center text-4xl">🇮🇳</div>
+                <h1 class="text-4xl font-bold tracking-tighter logo-font">FilmyNest</h1>
+            </div>
+
+            <div class="flex gap-10 text-lg">
+                <a onclick="switchTab(0)" id="tab0" class="cursor-pointer hover:text-orange-400 nav-active">Home</a>
+                <a onclick="switchTab(1)" id="tab1" class="cursor-pointer hover:text-orange-400">Discover</a>
+                <a onclick="switchTab(2)" id="tab2" class="cursor-pointer hover:text-orange-400">Trending</a>
+                <a onclick="switchTab(3)" id="tab3" class="cursor-pointer hover:text-orange-400">My Library</a>
+            </div>
+
+            <div class="flex items-center gap-6">
+                <div class="relative">
+                    <div class="glass border border-white/10 rounded-3xl px-6 py-3 flex items-center gap-3">
+                        <i class="fa-solid fa-magnifying-glass"></i>
+                        <input id="searchInput" onkeyup="liveSearch()" placeholder="Search movies or actors..." 
+                               class="bg-transparent outline-none w-80">
+                    </div>
+                    <div id="searchSuggestions" class="hidden absolute mt-2 w-full bg-zinc-900 border border-zinc-700 rounded-3xl py-4 shadow-2xl max-h-96 overflow-auto"></div>
+                </div>
+
+                <div id="authButtons" class="flex items-center gap-4">
+                    <button onclick="showLoginModal()" class="px-6 py-2 border border-white/60 hover:border-white rounded-3xl text-sm font-medium">Login</button>
+                    <button onclick="showSignupModal()" class="px-6 py-2 bg-orange-500 hover:bg-orange-600 rounded-3xl text-sm font-medium">Sign Up</button>
+                </div>
+
+                <div id="profileSection" class="hidden relative group">
+                    <div onclick="toggleProfileMenu()" class="flex items-center gap-3 cursor-pointer">
+                        <img id="userAvatar" src="https://picsum.photos/id/64/40/40" class="w-9 h-9 rounded-2xl object-cover ring-2 ring-orange-400">
+                        <span id="usernameDisplay" class="font-medium">Akansha</span>
+                    </div>
+                    <div id="profileMenu" class="hidden absolute right-0 mt-3 w-64 bg-zinc-900 border border-zinc-700 rounded-3xl py-4 shadow-2xl z-50">
+                        <div class="px-6 py-4 border-b border-zinc-700">
+                            <p class="font-medium" id="menuUsername">Akansha</p>
+                            <p class="text-xs text-zinc-400">Premium Member</p>
+                        </div>
+                        <div class="py-2">
+                            <a onclick="viewProfile()" class="block px-6 py-3 hover:bg-zinc-800 cursor-pointer">My Profile</a>
+                            <a onclick="switchTab(3)" class="block px-6 py-3 hover:bg-zinc-800 cursor-pointer">My Library</a>
+                            <a onclick="logout()" class="block px-6 py-3 hover:bg-zinc-800 text-red-400 cursor-pointer">Logout</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- HERO -->
+    <header id="homeSection" class="relative min-h-screen pt-24">
+        <div id="heroBackdrop" class="absolute inset-0 bg-cover bg-center" style="background-image: url('https://picsum.photos/id/1015/1920/1080')"></div>
+        <div class="absolute inset-0 bg-gradient-to-b from-transparent via-black/70 to-black"></div>
+       
+        <div class="relative max-w-screen-2xl mx-auto px-10 pt-32">
+            <div class="max-w-xl">
+                <h1 id="heroTitle" class="text-8xl font-black title-font leading-none mb-6">JAWAN</h1>
+                <p id="heroDesc" class="text-2xl text-zinc-200 mb-10"></p>
+                <div class="flex gap-6">
+                    <button onclick="playTrailer(1)" class="bg-white text-black px-10 py-5 rounded-3xl font-bold flex items-center gap-4 text-xl">
+                        <i class="fa-solid fa-play"></i> Trailer
+                    </button>
+                    <button onclick="addToWatchlistFromHero()" class="border border-white px-8 py-5 rounded-3xl font-medium flex items-center gap-3">
+                        <i class="fa-solid fa-heart"></i> Watchlist
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-screen-2xl mx-auto px-8 pb-20">
+        <!-- Filters -->
+        <div class="flex gap-4 mb-8 flex-wrap">
+            <select id="sortSelect" onchange="applyFilters()" class="bg-zinc-900 border border-zinc-700 rounded-3xl px-6 py-3">
+                <option value="rating">Sort by Rating</option>
+                <option value="year">Sort by Year</option>
+            </select>
+            <button onclick="filterByGenre('Action')" class="px-6 py-3 bg-zinc-900 hover:bg-orange-500 rounded-3xl">Action</button>
+            <button onclick="filterByGenre('Thriller')" class="px-6 py-3 bg-zinc-900 hover:bg-orange-500 rounded-3xl">Thriller</button>
+            <button onclick="filterByGenre('Horror')" class="px-6 py-3 bg-zinc-900 hover:bg-orange-500 rounded-3xl">Horror</button>
+            <button onclick="filterByGenre('Drama')" class="px-6 py-3 bg-zinc-900 hover:bg-orange-500 rounded-3xl">Drama</button>
+            <button onclick="filterByGenre('Comedy')" class="px-6 py-3 bg-zinc-900 hover:bg-orange-500 rounded-3xl">Comedy</button>
+        </div>
+
+        <!-- Discover -->
+        <section id="discoverSection">
+            <h2 class="text-5xl font-bold mb-10">Discover Movies</h2>
+            <div id="movieGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8"></div>
+        </section>
+
+        <!-- Trending -->
+        <section id="trendingSection" class="hidden mt-20">
+            <h2 class="text-5xl font-bold mb-10">Trending Right Now</h2>
+            <div id="trendingGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 2xl:grid-cols-7 gap-8"></div>
+        </section>
+
+        <!-- My Library -->
+        <section id="librarySection" class="hidden mt-20">
+            <h2 class="text-5xl font-bold mb-10">My Library & Watchlist</h2>
+            <div id="libraryGrid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-8"></div>
+        </section>
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-black border-t border-zinc-800 py-16">
+        <div class="max-w-screen-2xl mx-auto px-8">
+            <div class="grid grid-cols-2 md:grid-cols-5 gap-10">
+                <div class="col-span-2 md:col-span-1">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div class="w-12 h-12 bg-gradient-to-br from-orange-500 to-red-600 rounded-3xl flex items-center justify-center text-4xl">🇮🇳</div>
+                        <h1 class="text-4xl font-bold tracking-tighter logo-font">FilmyNest</h1>
+                    </div>
+                    <p class="text-zinc-400 text-sm leading-relaxed">
+                        Your ultimate home for Bollywood, South Indian cinema & desi entertainment. 
+                        Watch, rate, collect and relive the magic.
+                    </p>
+                    <div class="mt-8 flex gap-6 text-2xl text-zinc-400">
+                        <a href="#" class="hover:text-orange-400 transition-colors"><i class="fa-brands fa-instagram"></i></a>
+                        <a href="#" class="hover:text-orange-400 transition-colors"><i class="fa-brands fa-x-twitter"></i></a>
+                        <a href="#" class="hover:text-orange-400 transition-colors"><i class="fa-brands fa-youtube"></i></a>
+                        <a href="#" class="hover:text-orange-400 transition-colors"><i class="fa-brands fa-telegram"></i></a>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-6 text-orange-400">Quick Links</h3>
+                    <div class="space-y-4 text-sm text-zinc-400">
+                        <p onclick="switchTab(0)" class="cursor-pointer hover:text-white">Home</p>
+                        <p onclick="switchTab(1)" class="cursor-pointer hover:text-white">Discover Movies</p>
+                        <p onclick="switchTab(2)" class="cursor-pointer hover:text-white">Trending</p>
+                        <p onclick="switchTab(3)" class="cursor-pointer hover:text-white">My Library</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-6 text-orange-400">Genres</h3>
+                    <div class="space-y-4 text-sm text-zinc-400">
+                        <p onclick="filterByGenre('Action')" class="cursor-pointer hover:text-white">Action</p>
+                        <p onclick="filterByGenre('Drama')" class="cursor-pointer hover:text-white">Drama</p>
+                        <p onclick="filterByGenre('Horror')" class="cursor-pointer hover:text-white">Horror</p>   
+                        <p onclick="filterByGenre('Comedy')" class="cursor-pointer hover:text-white">Comedy</p>
+                        <p onclick="filterByGenre('Thriller')" class="cursor-pointer hover:text-white">Thriller</p>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="font-semibold mb-6 text-orange-400">Company</h3>
+                    <div class="space-y-4 text-sm text-zinc-400">
+                        <p class="cursor-pointer hover:text-white">About FilmyNest</p>
+                        <p class="cursor-pointer hover:text-white">Careers</p>
+                        <p class="cursor-pointer hover:text-white">Contact Us</p>
+                    </div>
+                </div>
+                <div class="col-span-2 md:col-span-1">
+                    <h3 class="font-semibold mb-6 text-orange-400">Stay in the Loop</h3>
+                    <div class="flex">
+                        <input type="email" id="newsletterEmail" placeholder="your@email.com" 
+                               class="bg-zinc-900 border border-zinc-700 rounded-l-3xl px-6 py-4 outline-none flex-1 text-sm">
+                        <button onclick="subscribeNewsletter()" 
+                                class="bg-orange-500 hover:bg-orange-600 px-8 rounded-r-3xl font-medium">Subscribe</button>
+                    </div>
+                </div>
+            </div>
+            <div class="mt-16 pt-10 border-t border-zinc-800 text-center text-sm text-zinc-500">
+                © 2026 FilmyNest • Made with ❤️ for every desi movie lover
+            </div>
+        </div>
+    </footer>
+
+    <!-- ====================== MODALS ====================== -->
+    <!-- Movie Detail Modal -->
+    <div id="movieModal" class="hidden fixed inset-0 bg-black/90 flex items-center justify-center z-[12000]">
+        <div class="bg-zinc-900 rounded-3xl max-w-4xl w-full max-h-[90vh] overflow-hidden modal">
+            <button onclick="hideModal()" class="absolute top-6 right-6 text-4xl text-white z-10">✕</button>
+            <div class="grid grid-cols-1 md:grid-cols-2">
+                <div id="modalPoster" class="p-8"></div>
+                <div class="p-8 space-y-6">
+                    <h2 id="modalTitle" class="text-4xl font-bold"></h2>
+                    <div id="modalMeta" class="text-zinc-400"></div>
+                    <div id="modalGenres" class="flex gap-2"></div>
+                    <div>
+                        <h3 class="text-orange-400 font-semibold mb-2">Story</h3>
+                        <p id="modalDesc" class="text-zinc-300 leading-relaxed"></p>
+                    </div>
+                    <div class="flex gap-4">
+                        <button onclick="playTrailerFromModal()" class="flex-1 bg-orange-500 hover:bg-orange-600 py-4 rounded-2xl font-bold flex items-center justify-center gap-3">
+                            <i class="fa-solid fa-play"></i> Watch Trailer
+                        </button>
+                        <button onclick="toggleWatchlistFromModal()" class="flex-1 border border-white py-4 rounded-2xl font-medium hover:bg-white/10">
+                            <i class="fa-solid fa-heart"></i> Watchlist
+                        </button>
+                    </div>
+                    <div>
+                        <h3 class="text-orange-400 font-semibold mb-3">Rate this movie</h3>
+                        <div id="userRating" class="text-4xl flex gap-1 cursor-pointer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Trailer Modal -->
+    <div id="trailerModal" class="hidden fixed inset-0 bg-black/95 flex items-center justify-center z-[13000]">
+        <div class="w-full max-w-5xl px-4">
+            <button onclick="closeTrailer()" class="absolute top-8 right-8 text-5xl text-white hover:text-orange-400">✕</button>
+            <div id="trailerContainer" class="aspect-video bg-black rounded-2xl overflow-hidden"></div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-8 left-1/2 -translate-x-1/2 bg-zinc-800 text-white px-8 py-4 rounded-3xl shadow-2xl flex items-center gap-3 toast"></div>
+
+    <script>
+        // ==================== MOVIE DATABASE ====================
+        let moviesDB = [
+            {id:1, title:"Jawan", poster:"https://picsum.photos/id/1015/300/420", backdrop:"https://picsum.photos/id/1015/1920/1080", rating:8.4, year:2023, duration:"169 min", genre:["Action","Thriller"], description:"SRK fights corruption in style with high-octane action and powerful dialogues.", trailer:"https://www.youtube.com/embed/COv52sI2O3U"},
+            {id:2, title:"Pathaan", poster:"https://picsum.photos/id/201/300/420", backdrop:"https://picsum.photos/id/201/1920/1080", rating:8.1, year:2023, duration:"146 min", genre:["Action","Thriller"], description:"Exiled RAW agent Pathaan returns to save India from a deadly conspiracy.", trailer:"https://www.youtube.com/embed/vqu4z7g2zM4"},
+            {id:3, title:"Animal", poster:"https://picsum.photos/id/237/300/420", backdrop:"https://picsum.photos/id/237/1920/1080", rating:7.9, year:2023, duration:"201 min", genre:["Action","Drama"], description:"A son's intense and violent journey to protect his family.", trailer:"https://www.youtube.com/embed/1s9h6z8jKz8"},
+        ];
+
+        for(let i=4; i<=58; i++){
+            const genres = ["Action","Drama","Comedy","Thriller","Horror"];
+            const randomGenre = genres[Math.floor(Math.random()*genres.length)];
+            moviesDB.push({
+                id:i,
+                title: ["Stree 2","Chhaava","Maharaja","Laapataa Ladies","Kill","Fighter","Dunki","Chandu Champion","Saiyaara","Crew"][(i-4)%10] + " " + (2023 + Math.floor(Math.random()*3)),
+                poster:`https://picsum.photos/id/${80+i}/300/420`,
+                backdrop:`https://picsum.photos/id/${80+i}/1920/1080`,
+                rating: (6.5 + Math.random()*3).toFixed(1),
+                year: 2023 + Math.floor(Math.random()*3),
+                duration: (110 + Math.floor(Math.random()*60)) + " min",
+                genre: [randomGenre],
+                description: "A captivating desi cinematic experience with powerful performances and gripping storyline.",
+                trailer: "https://www.youtube.com/embed/COv52sI2O3U"
+            });
+        }
+
+        let myLibrary = [];
+        let watchlist = [];
+        let currentMovieId = null;
+        let userRatings = {};
+
+        let isLoggedIn = false;
+        let currentUser = null;
+
+        function showToast(message, icon="🎉") {
+            const toast = document.getElementById('toast');
+            toast.innerHTML = `${icon} ${message}`;
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 2800);
+        }
+
+        // Auth Functions
+        function showLoginModal() { document.getElementById('loginModal').classList.remove('hidden'); }
+        function hideLoginModal() { document.getElementById('loginModal').classList.add('hidden'); }
+        function showSignupModal() { document.getElementById('signupModal').classList.remove('hidden'); }
+
+        function login() {
+            const username = document.getElementById('loginUsername').value.trim();
+            const password = document.getElementById('loginPassword').value.trim();
+            if (username && password) {
+                isLoggedIn = true;
+                currentUser = { name: "Akansha" };
+                hideLoginModal();
+                updateAuthUI();
+                showToast(`Welcome back, Akansha!`, '👋');
+            } else {
+                showToast("Please fill all fields", '⚠️');
+            }
+        }
+
+        function signup() {
+            const name = document.getElementById('signupName').value.trim();
+            if (name) {
+                isLoggedIn = true;
+                currentUser = { name: name };
+                document.getElementById('signupModal').classList.add('hidden');
+                updateAuthUI();
+                showToast(`Welcome, ${name}!`, '🎉');
+            }
+        }
+
+        function logout() {
+            isLoggedIn = false;
+            currentUser = null;
+            updateAuthUI();
+            showToast("Logged out successfully", '👋');
+        }
+
+        function updateAuthUI() {
+            if (isLoggedIn) {
+                document.getElementById('authButtons').classList.add('hidden');
+                document.getElementById('profileSection').classList.remove('hidden');
+            } else {
+                document.getElementById('authButtons').classList.remove('hidden');
+                document.getElementById('profileSection').classList.add('hidden');
+            }
+        }
+
+        function toggleProfileMenu() { document.getElementById('profileMenu').classList.toggle('hidden'); }
+        function viewProfile() { alert("Profile coming soon!"); toggleProfileMenu(); }
+
+        // Movie Functions
+        function renderMovies(containerId, movies) {
+            const container = document.getElementById(containerId);
+            container.innerHTML = '';
+            movies.forEach(movie => {
+                const isInWatchlist = watchlist.some(m => m.id === movie.id);
+                const html = `
+                <div class="movie-card group relative cursor-pointer rounded-3xl overflow-hidden bg-zinc-900" onclick="showMovieDetail(${movie.id})">
+                    <img src="${movie.poster}" class="w-full aspect-[2/3] object-cover">
+                    <div class="absolute top-4 right-4">
+                        <button onclick="event.stopImmediatePropagation(); toggleWatchlist(${movie.id});" class="text-2xl ${isInWatchlist ? 'heart-liked' : ''}">
+                            <i class="fa-solid fa-heart"></i>
+                        </button>
+                    </div>
+                    <div class="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black p-6">
+                        <h3 class="font-bold text-xl">${movie.title}</h3>
+                        <p class="text-xs text-zinc-400">${movie.year} • ${movie.rating}★</p>
+                    </div>
+                    <button onclick="event.stopImmediatePropagation(); quickPlay(${movie.id});" 
+                            class="absolute bottom-6 right-6 bg-white/90 text-black w-10 h-10 rounded-2xl flex items-center justify-center opacity-0 group-hover:opacity-100">
+                        <i class="fa-solid fa-play"></i>
+                    </button>
+                </div>`;
+                container.innerHTML += html;
+            });
+        }
+
+        function showMovieDetail(id) {
+            const movie = moviesDB.find(m => m.id === id);
+            currentMovieId = id;
+
+            document.getElementById('modalTitle').textContent = movie.title;
+            document.getElementById('modalPoster').innerHTML = `<img src="${movie.poster}" class="rounded-3xl shadow-2xl w-full">`;
+            document.getElementById('modalMeta').innerHTML = `${movie.year} • ${movie.duration} • ${movie.rating}★`;
+            
+            let genresHTML = movie.genre.map(g => `<span class="bg-orange-500/20 px-5 py-2 rounded-3xl text-sm">${g}</span>`).join('');
+            document.getElementById('modalGenres').innerHTML = genresHTML;
+            
+            document.getElementById('modalDesc').textContent = movie.description;
+
+            let starsHTML = '';
+            for(let i=1; i<=10; i++){
+                starsHTML += `<span onclick="rateMovie(${i});" class="hover:text-yellow-400 ${userRatings[id] >= i ? 'text-yellow-400' : 'text-zinc-600'}">★</span>`;
+            }
+            document.getElementById('userRating').innerHTML = starsHTML;
+            
+            document.getElementById('movieModal').classList.remove('hidden');
+            document.getElementById('movieModal').classList.add('flex');
+        }
+
+        function hideModal() {
+            document.getElementById('movieModal').classList.add('hidden');
+            document.getElementById('movieModal').classList.remove('flex');
+        }
+
+        function playTrailerFromModal() {
+            if(!currentMovieId) return;
+            const movie = moviesDB.find(m => m.id === currentMovieId);
+            hideModal();
+            document.getElementById('trailerContainer').innerHTML = `<iframe width="100%" height="100%" src="${movie.trailer}?autoplay=1" frameborder="0" allowfullscreen></iframe>`;
+            document.getElementById('trailerModal').classList.remove('hidden');
+            document.getElementById('trailerModal').classList.add('flex');
+        }
+
+        function closeTrailer() {
+            document.getElementById('trailerModal').classList.add('hidden');
+            document.getElementById('trailerModal').classList.remove('flex');
+            document.getElementById('trailerContainer').innerHTML = '';
+        }
+
+        function quickPlay(id) {
+            event.stopImmediatePropagation();
+            currentMovieId = id;
+            playTrailerFromModal();
+        }
+
+        function toggleWatchlist(id) {
+            event.stopImmediatePropagation();
+            const movie = moviesDB.find(m => m.id === id);
+            const index = watchlist.findIndex(m => m.id === id);
+            if(index > -1){
+                watchlist.splice(index, 1);
+                showToast(`Removed from Watchlist`, '❤️');
+            } else {
+                watchlist.push(movie);
+                showToast(`Added to Watchlist!`, '❤️');
+            }
+            renderMovies('movieGrid', moviesDB);
+        }
+
+        function toggleWatchlistFromModal() {
+            if(currentMovieId) toggleWatchlist(currentMovieId);
+            hideModal();
+        }
+
+        function addToWatchlistFromHero() {
+            const movie = moviesDB[0];
+            if(!watchlist.some(m => m.id === movie.id)){
+                watchlist.push(movie);
+                showToast("Added to Watchlist", "❤️");
+            }
+        }
+
+        function rateMovie(stars) {
+            userRatings[currentMovieId] = stars;
+            showToast(`Rated ${stars}/10!`, '⭐');
+        }
+
+        function liveSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const suggestionsBox = document.getElementById('searchSuggestions');
+            if(query.length < 2){
+                suggestionsBox.classList.add('hidden');
+                return;
+            }
+            const filtered = moviesDB.filter(m => m.title.toLowerCase().includes(query));
+            let html = '';
+            filtered.slice(0,8).forEach(movie => {
+                html += `<div onclick="selectSuggestion(${movie.id})" class="px-6 py-4 hover:bg-zinc-800 cursor-pointer flex items-center gap-4">
+                    <img src="${movie.poster}" class="w-12 h-16 object-cover rounded-xl">
+                    <div>
+                        <p class="font-medium">${movie.title}</p>
+                        <p class="text-xs text-zinc-400">${movie.year}</p>
+                    </div>
+                </div>`;
+            });
+            suggestionsBox.innerHTML = html;
+            suggestionsBox.classList.remove('hidden');
+        }
+
+        function selectSuggestion(id) {
+            document.getElementById('searchSuggestions').classList.add('hidden');
+            document.getElementById('searchInput').value = '';
+            showMovieDetail(id);
+        }
+
+        function applyFilters() {
+            const sortBy = document.getElementById('sortSelect').value;
+            let sorted = [...moviesDB];
+            if(sortBy === 'rating') sorted.sort((a,b) => b.rating - a.rating);
+            if(sortBy === 'year') sorted.sort((a,b) => b.year - a.year);
+            renderMovies('movieGrid', sorted);
+        }
+
+        function filterByGenre(genre) {
+            const filtered = moviesDB.filter(m => m.genre.includes(genre));
+            renderMovies('movieGrid', filtered);
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('#discoverSection, #trendingSection, #librarySection').forEach(s => s.classList.add('hidden'));
+            if(tab === 0 || tab === 1) document.getElementById('discoverSection').classList.remove('hidden');
+            else if(tab === 2) document.getElementById('trendingSection').classList.remove('hidden');
+            else if(tab === 3) document.getElementById('librarySection').classList.remove('hidden');
+            
+            document.querySelectorAll('.nav-active').forEach(el => el.classList.remove('nav-active'));
+            document.getElementById('tab' + tab).classList.add('nav-active');
+        }
+
+        function subscribeNewsletter() {
+            const email = document.getElementById('newsletterEmail').value.trim();
+            if(email){
+                showToast("Thank you for subscribing!", "📬");
+                document.getElementById('newsletterEmail').value = '';
+            }
+        }
+
+        function updateLibrary() {
+            const container = document.getElementById('libraryGrid');
+            container.innerHTML = '';
+            if(myLibrary.length === 0 && watchlist.length === 0){
+                container.innerHTML = `<p class="col-span-full text-center py-20 text-zinc-400">Your library is empty.</p>`;
+                return;
+            }
+            [...myLibrary, ...watchlist].forEach(movie => {
+                container.innerHTML += `
+                <div class="rounded-3xl overflow-hidden bg-zinc-900">
+                    <img src="${movie.poster}" class="w-full aspect-[2/3] object-cover">
+                    <div class="p-4"><h3 class="font-bold">${movie.title}</h3></div>
+                </div>`;
+            });
+        }
+
+        // Initialize
+        window.onload = () => {
+            renderMovies('movieGrid', moviesDB);
+            const trending = [...moviesDB].sort((a,b)=> b.rating - a.rating).slice(0,12);
+            renderMovies('trendingGrid', trending);
+            updateAuthUI();
+
+            // Hero rotator
+            let heroIdx = 1;
+            setInterval(() => {
+                heroIdx = (heroIdx % moviesDB.length) + 1;
+                const movie = moviesDB.find(m => m.id === heroIdx);
+                if(movie){
+                    document.getElementById('heroBackdrop').style.backgroundImage = `url('${movie.backdrop}')`;
+                    document.getElementById('heroTitle').textContent = movie.title;
+                    document.getElementById('heroDesc').textContent = movie.description;
+                }
+            }, 8000);
+
+            console.log("%c✅ FilmyNest Ready with Description & Trailers!", "color:#f97316; font-size:18px");
+        };
+    </script>
+</body>
+</html>
